@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import {Bot, GrammyError, HttpError} from "grammy";
-import * as process from "node:process";
 
 const TOKEN = process.env.BOT_TOKEN || '';
 const OFFTOP_CHAT_ID = process.env.OFFTOP_CHAT_ID || '';
