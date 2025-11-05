@@ -1,0 +1,29 @@
+{
+    "name": "is-job-bot",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "type": "module",
+    "author": {
+        "name": "Aleksandr Miroshnichenko",
+        "url": "https://t.me/sashafromlibertalia"
+    },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc && node dist/bot.js",
+        "start": "node dist/bot.js"
+    },
+    "engines": {
+        "node": "22.14.0",
+        "pnpm": "10.18.3"
+    },
+    "packageManager": "pnpm@10.18.3",
+    "dependencies": {
+        "dotenv": "^17.2.3",
+        "grammy": "^1.38.3"
+    },
+    "devDependencies": {
+        "@types/node": "^24.10.0",
+        "typescript": "^5.9.3"
+    }
+}
