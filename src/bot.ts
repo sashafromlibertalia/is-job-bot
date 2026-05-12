@@ -1,12 +1,23 @@
 import 'dotenv/config';
 import {Bot, GrammyError, HttpError} from "grammy";
+import {createClient} from '@supabase/supabase-js'
 
 const TOKEN = process.env.BOT_TOKEN || '';
 const OFFTOP_CHAT_ID = process.env.OFFTOP_CHAT_ID || '';
-
-const WHITELIST = process.env.WHITELIST_ID?.split(' ').map(id => +id) ?? []
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_KEY = process.env.SUPABASE_KEY || '';
 
 const bot = new Bot(TOKEN);
+
+const client = createClient(SUPABASE_URL, SUPABASE_KEY)
+
+const escapeMarkdownV2 = (text: string): string =>
+    text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
+
+const mentionUser = (user: { id: number; username?: string; first_name: string }): string =>
+    user.username
+        ? `@${escapeMarkdownV2(user.username)}`
+        : `[${escapeMarkdownV2(user.first_name)}](tg://user?id=${user.id})`;
 
 bot.on("chat_member", async (ctx) => {
     const chatMember = ctx.update.chat_member?.new_chat_member;
@@ -16,10 +27,18 @@ bot.on("chat_member", async (ctx) => {
 
     switch (chatMember.status) {
         case "member":
-            const isInWhitelist = WHITELIST.includes(chatMember.user.id)
+            const {data, error} = await client
+                .from('whitelist')
+                .select('telegram_id')
+                .eq('telegram_id', chatMember.user.id)
+                .maybeSingle();
 
-            if (isInWhitelist) {
-                await ctx.reply(`*Внимание*: @${chatMember.user.username} блатной\\. Ему можно тут быть`, {
+            if (error) {
+                console.error('Supabase whitelist lookup failed:', error);
+            }
+
+            if (data) {
+                await ctx.reply(`*Внимание*: ${mentionUser(chatMember.user)} блатной\\. Ему можно тут быть`, {
                     parse_mode: 'MarkdownV2'
                 })
 
@@ -32,7 +51,7 @@ bot.on("chat_member", async (ctx) => {
 
                 if (!isOfftopMember) {
                     await Promise.all([
-                        ctx.reply(`*@${chatMember.user.username}* нет в ИС\\.Оффтопе\\. F`, {
+                        ctx.reply(`${mentionUser(chatMember.user)} нет в ИС\\.Оффтопе\\. F`, {
                             parse_mode: 'MarkdownV2'
                         }),
                         bot.api.banChatMember(ctx.chatId, chatMember.user.id)
@@ -41,10 +60,12 @@ bot.on("chat_member", async (ctx) => {
                     return;
                 }
 
-                await ctx.reply(`Добро пожаловать в клуб, *@${offtopUser.user.username}*`, {
+                await ctx.reply(`Добро пожаловать в клуб, ${mentionUser(offtopUser.user)}`, {
                     parse_mode: 'MarkdownV2'
                 })
             } catch (e) {
+                console.error(e);
+
                 await Promise.all([
                     ctx.reply(`Что-то пошло не так, но я на всякий случай тебя кикну, @${chatMember.user.username}. Пока.`),
                     bot.api.banChatMember(ctx.chatId, chatMember.user.id)
