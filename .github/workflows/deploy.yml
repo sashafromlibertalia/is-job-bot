@@ -76,9 +76,10 @@ jobs:
                     port: ${{ secrets.SSH_PORT }}
                     key: ${{ secrets.SSH_PRIVATE_KEY }}
                     script: |
+                        set -e
+                        export NVM_DIR="$HOME/.nvm"
+                        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
                         cd "${{ secrets.DEPLOY_PATH }}"
-                        corepack enable
-                        corepack prepare pnpm@10.18.3 --activate
                         pnpm install --frozen-lockfile
                         pnpm build
                         pm2 reload is-job-bot --update-env || pm2 start dist/bot.js --name is-job-bot
