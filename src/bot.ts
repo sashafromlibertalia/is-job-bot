@@ -7,6 +7,8 @@ const OFFTOP_CHAT_ID = process.env.OFFTOP_CHAT_ID || '';
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_KEY = process.env.SUPABASE_KEY || '';
 
+const ADMIN_USER_ID = 319127347;
+
 const bot = new Bot(TOKEN);
 
 const client = createClient(SUPABASE_URL, SUPABASE_KEY)
@@ -77,8 +79,16 @@ bot.on("chat_member", async (ctx) => {
     }
 });
 
+bot.command('ping', async (ctx) => {
+    if (ctx.from?.id !== ADMIN_USER_ID) {
+        return;
+    }
+
+    await ctx.reply("pong");
+});
+
 bot.start({
-    allowed_updates: ['chat_member']
+    allowed_updates: ['chat_member', 'message']
 });
 
 bot.catch(async (err) => {
