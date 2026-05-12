@@ -22,7 +22,7 @@ jobs:
                     ssh-keyscan -p "${SSH_PORT}" -H "${SSH_HOST}" >> ~/.ssh/known_hosts
                 env:
                     SSH_HOST: ${{ secrets.SSH_HOST }}
-                    SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+                    SSH_PORT: ${{ secrets.SSH_PORT }}
 
             -   name: Rsync source to server
                 run: |
@@ -39,7 +39,7 @@ jobs:
                 env:
                     SSH_HOST: ${{ secrets.SSH_HOST }}
                     SSH_USER: ${{ secrets.SSH_USER }}
-                    SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+                    SSH_PORT: ${{ secrets.SSH_PORT }}
                     DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
 
             -   name: Install, build and restart
@@ -47,11 +47,11 @@ jobs:
                 with:
                     host: ${{ secrets.SSH_HOST }}
                     username: ${{ secrets.SSH_USER }}
-                    port: ${{ secrets.SSH_PORT || 22 }}
+                    port: ${{ secrets.SSH_PORT }}
                     key: ${{ secrets.SSH_PRIVATE_KEY }}
                     script: |
                         set -e
-                        echo "Deploying to ${{ secrets.DEPLOY_PATH }}"
+                        export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
                         cd "${{ secrets.DEPLOY_PATH }}"
                         corepack enable
                         corepack prepare pnpm@10.18.3 --activate
