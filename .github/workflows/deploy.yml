@@ -79,6 +79,7 @@ jobs:
                         set -e
                         export NVM_DIR="$HOME/.nvm"
                         [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+                        export PATH="$HOME/.local/share/pnpm:$PATH"
                         cd "${{ secrets.DEPLOY_PATH }}"
                         pnpm install --frozen-lockfile
                         pnpm build
