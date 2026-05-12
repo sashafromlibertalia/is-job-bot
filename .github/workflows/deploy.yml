@@ -42,6 +42,32 @@ jobs:
                     SSH_PORT: ${{ secrets.SSH_PORT }}
                     DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
 
+            -   name: Write .env on server
+                uses: appleboy/ssh-action@v1.2.0
+                with:
+                    host: ${{ secrets.SSH_HOST }}
+                    username: ${{ secrets.SSH_USER }}
+                    port: ${{ secrets.SSH_PORT }}
+                    key: ${{ secrets.SSH_PRIVATE_KEY }}
+                    envs: BOT_TOKEN,SUPABASE_URL,SUPABASE_KEY,OFFTOP_CHAT_ID,DEPLOY_PATH
+                    script: |
+                        set -e
+                        umask 077
+                        tmp="$(mktemp)"
+                        cat > "$tmp" <<EOF
+                        BOT_TOKEN=${BOT_TOKEN}
+                        SUPABASE_URL=${SUPABASE_URL}
+                        SUPABASE_KEY=${SUPABASE_KEY}
+                        OFFTOP_CHAT_ID=${OFFTOP_CHAT_ID}
+                        EOF
+                        mv "$tmp" "${DEPLOY_PATH}/.env"
+                env:
+                    BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+                    SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+                    SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+                    OFFTOP_CHAT_ID: ${{ secrets.OFFTOP_CHAT_ID }}
+                    DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+
             -   name: Install, build and restart
                 uses: appleboy/ssh-action@v1.2.0
                 with:
@@ -51,8 +77,6 @@ jobs:
                     key: ${{ secrets.SSH_PRIVATE_KEY }}
                     script: |
                         set -e
-                        export NVM_DIR="$HOME/.nvm"
-                        [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
                         cd "${{ secrets.DEPLOY_PATH }}"
                         corepack enable
                         corepack prepare pnpm@10.18.3 --activate
