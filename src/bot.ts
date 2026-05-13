@@ -21,62 +21,105 @@ const mentionUser = (user: { id: number; username?: string; first_name: string }
         ? `@${escapeMarkdownV2(user.username)}`
         : `[${escapeMarkdownV2(user.first_name)}](tg://user?id=${user.id})`;
 
+type AuthStatus = 'whitelisted' | 'offtop_member' | 'unauthorized';
+
+async function checkAuthorization(userId: number): Promise<AuthStatus> {
+    const {data, error} = await client
+        .from('whitelist')
+        .select('telegram_id')
+        .eq('telegram_id', userId)
+        .maybeSingle();
+
+    if (error) {
+        console.error('Supabase whitelist lookup failed:', error);
+    }
+
+    if (data) {
+        return 'whitelisted';
+    }
+
+    const offtopUser = await bot.api.getChatMember(OFFTOP_CHAT_ID, userId);
+    const isOfftopMember = !['left', 'kicked', 'restricted'].includes(offtopUser.status);
+
+    return isOfftopMember ? 'offtop_member' : 'unauthorized';
+}
+
 bot.on("chat_member", async (ctx) => {
     const chatMember = ctx.update.chat_member?.new_chat_member;
-    if (!chatMember) {
+    if (!chatMember || chatMember.status !== "member") {
         return;
     }
 
-    switch (chatMember.status) {
-        case "member":
-            const {data, error} = await client
-                .from('whitelist')
-                .select('telegram_id')
-                .eq('telegram_id', chatMember.user.id)
-                .maybeSingle();
+    try {
+        const status = await checkAuthorization(chatMember.user.id);
 
-            if (error) {
-                console.error('Supabase whitelist lookup failed:', error);
-            }
-
-            if (data) {
-                await ctx.reply(`*Внимание*: ${mentionUser(chatMember.user)} блатной\\. Ему можно тут быть`, {
-                    parse_mode: 'MarkdownV2'
-                })
-
-                return;
-            }
-
-            try {
-                const offtopUser = await bot.api.getChatMember(OFFTOP_CHAT_ID, chatMember.user.id);
-                const isOfftopMember = !['left', 'kicked', 'restricted'].includes(offtopUser.status)
-
-                if (!isOfftopMember) {
-                    await Promise.all([
-                        ctx.reply(`${mentionUser(chatMember.user)} нет в ИС\\.Оффтопе\\. F`, {
-                            parse_mode: 'MarkdownV2'
-                        }),
-                        bot.api.banChatMember(ctx.chatId, chatMember.user.id)
-                    ])
-
-                    return;
-                }
-
-                await ctx.reply(`Добро пожаловать в клуб, ${mentionUser(offtopUser.user)}`, {
-                    parse_mode: 'MarkdownV2'
-                })
-            } catch (e) {
-                console.error(e);
-
+        switch (status) {
+            case 'whitelisted':
                 await Promise.all([
-                    ctx.reply(`Что-то пошло не так, но я на всякий случай тебя кикну, @${chatMember.user.username}. Пока.`),
+                    bot.api.unbanChatMember(ctx.chatId, chatMember.user.id),
+                    ctx.reply(`*Внимание*: ${mentionUser(chatMember.user)} блатной\\. Ему можно тут быть`, {
+                        parse_mode: 'MarkdownV2'
+                    })
+                ]);
+                break;
+            case 'offtop_member':
+                await Promise.all([
+                    bot.api.unbanChatMember(ctx.chatId, chatMember.user.id),
+                    ctx.reply(`Добро пожаловать в клуб, ${mentionUser(chatMember.user)}`, {
+                        parse_mode: 'MarkdownV2'
+                    })
+                ]);
+                break;
+            case 'unauthorized':
+                await Promise.all([
+                    ctx.reply(`${mentionUser(chatMember.user)} нет в ИС\\.Оффтопе\\. F`, {
+                        parse_mode: 'MarkdownV2'
+                    }),
                     bot.api.banChatMember(ctx.chatId, chatMember.user.id)
-                ])
-            }
-            break;
-        default:
-            break;
+                ]);
+                break;
+        }
+    } catch (e) {
+        console.error(e);
+
+        await Promise.all([
+            ctx.reply(`Что-то пошло не так, но я на всякий случай тебя кикну, @${chatMember.user.username}. Пока.`),
+            bot.api.banChatMember(ctx.chatId, chatMember.user.id)
+        ]);
     }
+});
+
+bot.command('add', async (ctx) => {
+    if (ctx.from?.id !== ADMIN_USER_ID) {
+        return;
+    }
+
+    const arg = ctx.match.trim();
+    const userId = Number(arg);
+
+    if (!arg || isNaN(userId) || !Number.isInteger(userId)) {
+        await ctx.reply('Использование: /add <USER_ID>');
+        return;
+    }
+
+    const {error} = await client
+        .from('whitelist')
+        .insert({telegram_id: userId});
+
+    if (error) {
+        if (error.code === '23505') {
+            await ctx.reply(`Пользователь ${userId} уже в вайтлисте.`);
+        } else {
+            console.error('Supabase insert error:', error);
+            await ctx.reply(`Ошибка при добавлении: ${error.message}`);
+        }
+        return;
+    }
+
+    await Promise.all([
+        ctx.reply(`Пользователь ${userId} добавлен в вайтлист.`),
+        bot.api.unbanChatMember(ctx.chatId, userId),
+    ]);
 });
 
 bot.command('ping', async (ctx) => {
