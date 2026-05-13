@@ -77,11 +77,6 @@ bot.on("chat_member", async (ctx) => {
         }
     } catch (e) {
         console.error(e);
-
-        await Promise.all([
-            ctx.reply(`Что-то пошло не так, но я на всякий случай тебя кикну, @${chatMember.user.username}. Пока.`),
-            bot.api.banChatMember(ctx.chatId, chatMember.user.id)
-        ]);
     }
 });
 
