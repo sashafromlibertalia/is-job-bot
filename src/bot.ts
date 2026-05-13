@@ -57,20 +57,14 @@ bot.on("chat_member", async (ctx) => {
 
         switch (status) {
             case 'whitelisted':
-                await Promise.all([
-                    bot.api.unbanChatMember(ctx.chatId, chatMember.user.id),
-                    ctx.reply(`*Внимание*: ${mentionUser(chatMember.user)} блатной\\. Ему можно тут быть`, {
-                        parse_mode: 'MarkdownV2'
-                    })
-                ]);
+                await ctx.reply(`*Внимание*: ${mentionUser(chatMember.user)} блатной\\. Ему можно тут быть`, {
+                    parse_mode: 'MarkdownV2'
+                });
                 break;
             case 'offtop_member':
-                await Promise.all([
-                    bot.api.unbanChatMember(ctx.chatId, chatMember.user.id),
-                    ctx.reply(`Добро пожаловать в клуб, ${mentionUser(chatMember.user)}`, {
-                        parse_mode: 'MarkdownV2'
-                    })
-                ]);
+                await ctx.reply(`Добро пожаловать в клуб, ${mentionUser(chatMember.user)}`, {
+                    parse_mode: 'MarkdownV2'
+                });
                 break;
             case 'unauthorized':
                 await Promise.all([
