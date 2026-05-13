@@ -48,7 +48,7 @@ bot.on("chat_member", async (ctx) => {
     const chatMember = ctx.update.chat_member?.new_chat_member;
     console.log(chatMember);
 
-    if (!chatMember || chatMember.status !== "member") {
+    if (!chatMember) {
         return;
     }
 
