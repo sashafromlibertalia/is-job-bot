@@ -2,7 +2,7 @@
     "name": "is-job-bot",
     "version": "1.0.0",
     "description": "",
-    "main": "bot.js",
+    "main": "dist/bot.js",
     "author": {
         "name": "Aleksandr Miroshnichenko",
         "url": "https://t.me/sashafromlibertalia"
