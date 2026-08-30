@@ -5,6 +5,7 @@ config({path: resolve(__dirname, '../.env')});
 import {Bot, GrammyError, HttpError} from "grammy";
 import {createClient} from '@supabase/supabase-js'
 
+const TRIGGER_COOLDOWN_MS = Number(process.env.TRIGGER_COOLDOWN_MS ?? 15_000);
 const TOKEN = process.env.BOT_TOKEN || '';
 const OFFTOP_CHAT_ID = process.env.OFFTOP_CHAT_ID || '';
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
@@ -25,6 +26,69 @@ const mentionUser = (user: { id: number; username?: string; first_name: string }
         : `[${escapeMarkdownV2(user.first_name)}](tg://user?id=${user.id})`;
 
 type AuthStatus = 'whitelisted' | 'offtop_member' | 'unauthorized';
+
+type TriggerConfig = {
+    words: string[];
+    reply: string;
+};
+
+type CompiledTrigger = {
+    regex: RegExp;
+    reply: string;
+    lastFired: number;
+};
+
+function loadTriggers(): CompiledTrigger[] {
+    const raw = process.env.TRIGGERS;
+    if (!raw) {
+        console.warn('TRIGGERS env не задан, триггеры отключены');
+        return [];
+    }
+
+    let parsed: TriggerConfig[];
+    try {
+        parsed = JSON.parse(raw);
+    } catch (e) {
+        console.error('Не удалось распарсить TRIGGERS (невалидный JSON):', e);
+        return [];
+    }
+
+    if (!Array.isArray(parsed)) {
+        console.error('TRIGGERS должен быть массивом');
+        return [];
+    }
+
+    const compiled: CompiledTrigger[] = [];
+
+    for (const t of parsed) {
+        if (!t.words?.length || !t.reply) {
+            console.warn('Пропущен невалидный триггер:', t);
+            continue;
+        }
+
+        const escaped = t.words.map(w =>
+            w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        );
+
+        // Границы слова с поддержкой юникода (кириллица не входит в \w!)
+        const pattern = `(?<![\\p{L}\\p{N}_])(?:${escaped.join('|')})(?![\\p{L}\\p{N}_])`;
+
+        try {
+            compiled.push({
+                regex: new RegExp(pattern, 'iu'),
+                reply: t.reply,
+                lastFired: 0,
+            });
+        } catch (e) {
+            console.error('Невалидный regex для триггера:', t, e);
+        }
+    }
+
+    console.log(`Загружено триггеров: ${compiled.length}`);
+    return compiled;
+}
+
+const triggers = loadTriggers();
 
 async function checkAuthorization(userId: number): Promise<AuthStatus> {
     const {data, error} = await client
@@ -133,6 +197,25 @@ bot.command('ping', async (ctx) => {
     }
 
     await ctx.reply("pong");
+});
+
+bot.on('message:text', async (ctx) => {
+    const text = ctx.message.text;
+    const now = Date.now();
+
+    const matched = triggers.find(t => t.regex.test(text));
+    if (!matched) return;
+
+    if (now - matched.lastFired < TRIGGER_COOLDOWN_MS) {
+        return; // недавно уже отвечали этим триггером — молчим
+    }
+    matched.lastFired = now;
+
+    try {
+        await ctx.reply(matched.reply);
+    } catch (e) {
+        console.error('Ошибка отправки триггер-ответа:', e);
+    }
 });
 
 bot.start({
