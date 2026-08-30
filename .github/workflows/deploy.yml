@@ -13,7 +13,7 @@ jobs:
     deploy:
         runs-on: ubuntu-latest
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v5
             -   name: Setup SSH
                 run: |
                     mkdir -p ~/.ssh
@@ -43,7 +43,7 @@ jobs:
                     DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
 
             -   name: Write .env on server
-                uses: appleboy/ssh-action@v1.2.0
+                uses: appleboy/ssh-action@v1
                 with:
                     host: ${{ secrets.SSH_HOST }}
                     username: ${{ secrets.SSH_USER }}
@@ -69,7 +69,7 @@ jobs:
                     DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
 
             -   name: Install, build and restart
-                uses: appleboy/ssh-action@v1.2.0
+                uses: appleboy/ssh-action@v1
                 with:
                     host: ${{ secrets.SSH_HOST }}
                     username: ${{ secrets.SSH_USER }}
@@ -81,6 +81,8 @@ jobs:
                         [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
                         export PATH="$HOME/.local/share/pnpm:$PATH"
                         cd "${{ secrets.DEPLOY_PATH }}"
+                        nvm install
+                        node -v
                         pnpm install --frozen-lockfile
                         pnpm build
                         pm2 reload is-job-bot --update-env || pm2 start dist/bot.js --name is-job-bot
