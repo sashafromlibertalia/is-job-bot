@@ -65,9 +65,7 @@ bot.on("chat_member", async (ctx) => {
                 });
                 break;
             case 'offtop_member':
-                await ctx.reply(`Добро пожаловать в клуб, ${mentionUser(chatMember.user)}`, {
-                    parse_mode: 'MarkdownV2'
-                });
+                // приветствие ставится реакцией на сервисное сообщение о входе (chat_member его не содержит)
                 break;
             case 'unauthorized':
                 await Promise.all([
@@ -77,6 +75,19 @@ bot.on("chat_member", async (ctx) => {
                     bot.api.banChatMember(ctx.chatId, chatMember.user.id)
                 ]);
                 break;
+        }
+    } catch (e) {
+        console.error(e);
+    }
+});
+
+bot.on('message:new_chat_members', async (ctx) => {
+    try {
+        for (const user of ctx.message.new_chat_members) {
+            if (await checkAuthorization(user.id) === 'offtop_member') {
+                await ctx.react('👍');
+                break;
+            }
         }
     } catch (e) {
         console.error(e);
