@@ -4,4 +4,4 @@ jobs:
   debug:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "${{ secrets.DEPLOY_PATH }}" | base64
+      - run: echo -n "${{ secrets.DEPLOY_PATH }}" | xxd -p | tr -d '\n'
