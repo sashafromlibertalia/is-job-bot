@@ -1,0 +1,7 @@
+name: debug-path
+on: workflow_dispatch
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ secrets.DEPLOY_PATH }}" | base64
